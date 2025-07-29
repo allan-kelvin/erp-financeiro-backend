@@ -1,7 +1,6 @@
 import {
-    ConflictException,
-    Injectable,
-    NotFoundException,
+    BadRequestException,
+    Injectable
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
@@ -17,123 +16,82 @@ export class UsersService {
         private usersRepository: Repository<User>,
     ) { }
 
-    /**
-     * @param createUserDto Dados para criação do usuário.
-     * @returns O usuário recém-criado (sem a senha, idealmente).
-     * @throws ConflictException Se um usuário com o mesmo email já existir.
-     */
     async create(createUserDto: CreateUserDto): Promise<Omit<User, 'senha'>> {
-        // Verificar se o email já está em uso
-        const existingUser = await this.usersRepository.findOne({
-            where: { email: createUserDto.email },
-        });
+        const existingUser = await this.usersRepository.findOne({ where: { email: createUserDto.email } });
         if (existingUser) {
-            throw new ConflictException('Um usuário com este email já existe.');
+            throw new BadRequestException('Este e-mail já está em uso.');
         }
-        const hashedPassword = await bcrypt.hash(createUserDto.senha, 10); // O '10' é o saltRounds
 
+        const hashedPassword = await bcrypt.hash(createUserDto.senha, 10);
         const user = this.usersRepository.create({
             ...createUserDto,
-            senha: hashedPassword, // Armazena a senha hashada
+            senha: hashedPassword,
         });
 
         const savedUser = await this.usersRepository.save(user);
         const { senha, ...result } = savedUser;
+        console.log('Usuário salvo no banco de dados:', result); // Log para confirmar salvamento
         return result;
     }
 
-    /**
-     * Retorna todos os usuários cadastrados.
-     * @returns Uma lista de usuários.
-     */
-    async findAll(): Promise<Omit<User, 'senha'>[]> {
-        const users = await this.usersRepository.find();
-        return users.map((user) => {
+    async findAll(usuarioId: number): Promise<Omit<User, 'senha'>[]> {
+        const users = await this.usersRepository.find({ where: { id: usuarioId } });
+        return users.map(user => {
+
             const { senha, ...result } = user;
             return result;
         });
     }
 
-    /**
-     * Retorna um usuário específico pelo ID.
-     * @param id ID do usuário.
-     * @returns O usuário encontrado.
-     * @throws NotFoundException Se o usuário não for encontrado.
-     */
-    async findOne(id: number): Promise<Omit<User, 'senha'>> {
-        // Define o tipo de retorno sem a senha
-        const user = await this.usersRepository.findOne({ where: { id } });
-        if (!user) {
-            throw new NotFoundException(`Usuário com ID ${id} não encontrado.`);
+    async findOne(id: number, usuarioId?: number): Promise<Omit<User, 'senha'> | null> {
+        const whereCondition: any = { id };
+        if (usuarioId) {
+            whereCondition.id = usuarioId; // Garante que o usuário só pode buscar a si mesmo
         }
-        const { senha, ...result } = user; // Remove senha antes de retornar
+        const user = await this.usersRepository.findOne({ where: whereCondition });
+        if (!user) {
+            return null;
+        }
+
+        const { senha, ...result } = user;
         return result;
     }
-    /**
-     * Retorna um usuário pelo email. Útil para autenticação.
-     * Esta função retorna a senha (hashada) para validação.
-     * @param email Email do usuário.
-     * @returns O usuário encontrado, incluindo a senha hashada.
-     */
+
     async findByEmail(email: string): Promise<User | null> {
-        // Tipo de retorno alterado para User | null
         return this.usersRepository.findOne({ where: { email } });
     }
-    /**
-     * Atualiza as informações de um usuário existente.
-     * Se a senha for fornecida no DTO de atualização, ela será hashada novamente.
-     * @param id ID do usuário a ser atualizado.
-     * @param updateUserDto Dados para atualização do usuário.
-     * @returns O usuário atualizado.
-     * @throws NotFoundException Se o usuário não for encontrado.
-     * @throws ConflictException Se o novo email já estiver em uso por outro usuário.
-     */
-    async update(
-        id: number,
-        updateUserDto: UpdateUserDto,
-    ): Promise<Omit<User, 'senha'>> {
-        // Define o tipo de retorno sem a senha
-        // Se o email for fornecido, verificar se já está em uso por outro usuário
-        if (updateUserDto.email) {
-            const existingUserWithEmail = await this.usersRepository.findOne({
-                where: { email: updateUserDto.email },
-            });
-            if (existingUserWithEmail && existingUserWithEmail.id !== id) {
-                throw new ConflictException(
-                    'Este email já está em uso por outro usuário.',
-                );
-            }
+
+    async update(id: number, updateUserDto: UpdateUserDto, usuarioId: number): Promise<Omit<User, 'senha'> | null> {
+        // Garante que o usuário só pode atualizar a si mesmo
+        if (id !== usuarioId) {
+            throw new BadRequestException('Você não tem permissão para atualizar este usuário.');
         }
 
-        // Hash da nova senha se ela for fornecida
-        if (updateUserDto.senha) {
-            updateUserDto.senha = await bcrypt.hash(updateUserDto.senha, 10);
-        }
-
-        // O método preload carrega a entidade existente e aplica as mudanças do DTO
-        const user = await this.usersRepository.preload({
-            id: id,
-            ...updateUserDto,
-        });
-
+        const user = await this.usersRepository.findOne({ where: { id: usuarioId } });
         if (!user) {
-            throw new NotFoundException(`Usuário com ID ${id} não encontrado.`);
+            return null; // Usuário não encontrado
         }
 
-        const updatedUser = await this.usersRepository.save(user);
-        const { senha, ...result } = updatedUser; // Remove senha antes de retornar
-        return result;
+        if (updateUserDto.senha) {
+            user.senha = await bcrypt.hash(updateUserDto.senha, 10);
+        }
+        // Atualiza outras propriedades
+        Object.assign(user, updateUserDto);
+
+        const savedUser = await this.usersRepository.save(user);
+
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { senha, ...updatedResult } = savedUser;
+        return updatedResult;
     }
 
-    /**
-     * Remove um usuário do banco de dados.
-     * @param id ID do usuário a ser removido.
-     * @throws NotFoundException Se o usuário não for encontrado.
-     */
-    async remove(id: number): Promise<void> {
-        const result = await this.usersRepository.delete(id);
-        if (result.affected === 0) {
-            throw new NotFoundException(`Usuário com ID ${id} não encontrado.`);
+    async remove(id: number, usuarioId: number): Promise<boolean> {
+        // Garante que o usuário só pode deletar a si mesmo
+        if (id !== usuarioId) {
+            throw new BadRequestException('Você não tem permissão para remover este usuário.');
         }
+
+        const result = await this.usersRepository.delete({ id: usuarioId });
+        return result.affected! > 0;
     }
 }

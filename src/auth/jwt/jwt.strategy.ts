@@ -18,8 +18,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     ) {
         const jwtSecret = configService.get<string>('JWT_SECRET');
         if (!jwtSecret) {
-            // Lança um erro se a chave secreta não estiver configurada.
-            // Isso é crucial para a segurança.
             throw new InternalServerErrorException('JWT_SECRET não está configurado nas variáveis de ambiente.');
         }
 

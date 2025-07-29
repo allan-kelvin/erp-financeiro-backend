@@ -1,4 +1,5 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, UsePipes, ValidationPipe } from '@nestjs/common';
+import { CreateUserDto } from 'src/users/dto/create-user.dto/create-user.dto';
 import { AuthService } from './auth.service';
 import { LoginUserDto } from './dto/login-user.dto';
 
@@ -9,8 +10,15 @@ export class AuthController {
     constructor(private readonly authService: AuthService) { }
 
     @Post('login')
-    @HttpCode(HttpStatus.OK) // Retorna 200 OK para login bem-sucedido
+    @HttpCode(HttpStatus.OK)
     async login(@Body() loginUserDto: LoginUserDto) {
         return this.authService.login(loginUserDto);
+    }
+
+    @Post('register') // Nova rota para registro de usuários
+    @HttpCode(HttpStatus.CREATED)
+    async register(@Body() createUserDto: CreateUserDto) {
+        // A lógica de registro será delegada ao AuthService, que por sua vez usará o UsersService
+        return this.authService.register(createUserDto);
     }
 }

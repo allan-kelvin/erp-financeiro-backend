@@ -20,10 +20,10 @@ export class CartoesService {
      * Cria um novo cartão para um usuário específico.
      * @param createCartaoDto Os dados para criação do cartão.
      * @param usuarioId O ID do usuário autenticado.
+     * @param imagePath O caminho do arquivo de imagem (opcional).
      * @returns O cartão criado.
      */
-    async create(createCartaoDto: CreateCartoesDto, usuarioId: number): Promise<Cartao> {
-        // Verifica se o usuário existe para garantir a integridade referencial
+    async create(createCartaoDto: CreateCartoesDto, usuarioId: number, imagePath?: string): Promise<Cartao> {
         const usuario = await this.usersRepository.findOne({ where: { id: usuarioId } });
         if (!usuario) {
             throw new NotFoundException(`Usuário com ID ${usuarioId} não encontrado.`);
@@ -31,8 +31,9 @@ export class CartoesService {
 
         const cartao = this.cartoesRepository.create({
             ...createCartaoDto,
-            usuario: usuario, // Associa o objeto usuário
-            usuarioId: usuarioId, // Garante que a chave estrangeira seja definida corretamente
+            usuario: usuario,
+            usuarioId: usuarioId,
+            imagem_cartao: imagePath, // Salva o caminho da imagem
         });
         return this.cartoesRepository.save(cartao);
     }
@@ -44,8 +45,9 @@ export class CartoesService {
      */
     async findAllByUserId(usuarioId: number): Promise<Cartao[]> {
         return this.cartoesRepository.find({
-            where: { usuario: { id: usuarioId } }, // Filtra por usuário
-            relations: ['usuario'], // Opcional: carrega os dados do usuário associado
+            where: { usuario: { id: usuarioId } },
+            relations: ['usuario'],
+            order: { id: 'DESC' }
         });
     }
 
@@ -58,7 +60,7 @@ export class CartoesService {
      */
     async findOne(id: number, usuarioId: number): Promise<Cartao> {
         const cartao = await this.cartoesRepository.findOne({
-            where: { id: id, usuario: { id: usuarioId } }, // Filtra por ID do cartão E ID do usuário
+            where: { id: id, usuario: { id: usuarioId } },
             relations: ['usuario'],
         });
 
@@ -73,13 +75,17 @@ export class CartoesService {
      * @param id O ID do cartão a ser atualizado.
      * @param updateCartaoDto Os dados para atualização.
      * @param usuarioId O ID do usuário autenticado.
+     * @param imagePath O novo caminho do arquivo de imagem (opcional).
      * @returns O cartão atualizado.
      */
-    async update(id: number, updateCartaoDto: UpdateCartoesDto, usuarioId: number): Promise<Cartao> {
-        // Reutiliza findOne para validar se o cartão existe e pertence ao usuário
+    async update(id: number, updateCartaoDto: UpdateCartoesDto, usuarioId: number, imagePath?: string): Promise<Cartao> {
         const cartao = await this.findOne(id, usuarioId);
 
-        // Aplica as atualizações no objeto do cartão
+        // Se uma nova imagem for enviada, atualiza o caminho
+        if (imagePath !== undefined) { // Permite que 'null' seja passado para remover a imagem
+            cartao.imagem_cartao = imagePath;
+        }
+
         this.cartoesRepository.merge(cartao, updateCartaoDto);
         return this.cartoesRepository.save(cartao);
     }
@@ -91,9 +97,8 @@ export class CartoesService {
      * @throws NotFoundException Se o cartão não for encontrado ou não pertencer ao usuário.
      */
     async remove(id: number, usuarioId: number): Promise<void> {
-        // Reutiliza findOne para validar se o cartão existe e pertence ao usuário
         const cartao = await this.findOne(id, usuarioId);
-
+        // TODO: Adicionar lógica para remover o arquivo físico da imagem, se existir.
         await this.cartoesRepository.remove(cartao);
     }
 }

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { addMonths } from 'date-fns';
 import { Cartao } from 'src/cartoes/entities/cartoes.entity';
@@ -18,9 +18,9 @@ export class DividasService {
     private dividasRepository: Repository<Dividas>,
     @InjectRepository(ContasAPagar)
     private accountsPayableRepository: Repository<ContasAPagar>,
-    @InjectRepository(User) // Injeta o repositório de usuários
+    @InjectRepository(User)
     private usersRepository: Repository<User>,
-    @InjectRepository(Cartao) // Injeta o repositório de cartões para validação
+    @InjectRepository(Cartao)
     private cartoesRepository: Repository<Cartao>,
   ) { }
 
@@ -31,7 +31,7 @@ export class DividasService {
    * @returns A dívida criada.
    */
   async create(createDividaDto: CreateDividasDto, usuarioId: number): Promise<Dividas> {
-    const { parcelado, valor_total, qtd_parcelas, data_lancamento, cartaoId, ...rest } = createDividaDto;
+    const { parcelado, valor_total, qtd_parcelas, data_lancamento, cartaoId, juros_aplicado, total_com_juros, ...rest } = createDividaDto;
 
     // 1. Verificar se o usuário existe
     const usuario = await this.usersRepository.findOne({ where: { id: usuarioId } });
@@ -52,35 +52,63 @@ export class DividasService {
       valor_total,
       parcelado,
       data_lancamento: new Date(data_lancamento),
-      cartao: cartao, // Associa o objeto cartão
+      cartao: cartao,
       cartaoId: cartaoId,
-      usuario: usuario, // Associa o objeto usuário
-      usuarioId: usuarioId, // Garante que a chave estrangeira seja definida corretamente
+      usuario: usuario,
+      usuarioId: usuarioId,
     });
 
+    // Lógica para juros e parcelamento
     if (parcelado) {
+      if (!qtd_parcelas || qtd_parcelas <= 0) {
+        throw new BadRequestException('Quantidade de parcelas é obrigatória e deve ser maior que zero para dívidas parceladas.');
+      }
       divida.qtd_parcelas = qtd_parcelas;
-      divida.valor_parcela = valor_total / qtd_parcelas!; // Use ! para afirmar que não é nulo aqui
-      divida.data_fim_parcela = addMonths(new Date(data_lancamento), qtd_parcelas!);
+
+      // Calcular juros_aplicado e total_com_juros
+      if (juros_aplicado !== undefined && juros_aplicado !== null) {
+        divida.juros_aplicado = juros_aplicado;
+        divida.total_com_juros = valor_total + juros_aplicado;
+      } else if (total_com_juros !== undefined && total_com_juros !== null) {
+        divida.total_com_juros = total_com_juros;
+        divida.juros_aplicado = total_com_juros - valor_total;
+      } else {
+        // Se nenhum juros ou total_com_juros for fornecido, assumir 0 juros
+        divida.juros_aplicado = 0;
+        divida.total_com_juros = valor_total;
+      }
+
+      divida.valor_parcela = divida.total_com_juros / qtd_parcelas;
+      divida.data_fim_parcela = addMonths(new Date(data_lancamento), qtd_parcelas);
     } else {
       divida.qtd_parcelas = undefined;
       divida.valor_parcela = undefined;
-      divida.total_com_juros = undefined;
       divida.data_fim_parcela = undefined;
+
+      if (juros_aplicado !== undefined && juros_aplicado !== null) {
+        divida.juros_aplicado = juros_aplicado;
+        divida.total_com_juros = valor_total + juros_aplicado;
+      } else if (total_com_juros !== undefined && total_com_juros !== null) {
+        divida.total_com_juros = total_com_juros;
+        divida.juros_aplicado = total_com_juros - valor_total;
+      } else {
+        divida.juros_aplicado = 0;
+        divida.total_com_juros = valor_total;
+      }
     }
 
     const savedDivida = await this.dividasRepository.save(divida);
 
     // Gerar contas a pagar
-    if (parcelado) {
+    if (savedDivida.parcelado) {
       for (let i = 0; i < savedDivida.qtd_parcelas!; i++) {
-        const dueDate = addMonths(new Date(data_lancamento), i); // Data de vencimento da parcela
+        const dueDate = addMonths(new Date(data_lancamento), i);
         const accountPayable = this.accountsPayableRepository.create({
           divida: savedDivida,
           dividaId: savedDivida.id,
           cartao: cartao,
           cartaoId: cartaoId,
-          valor_pago: savedDivida.valor_parcela!,
+          valor_pago: savedDivida.valor_parcela!, // Valor da parcela
           data_emissao: dueDate,
           status: StatusContaPagar.ABERTO,
         });
@@ -92,7 +120,7 @@ export class DividasService {
         dividaId: savedDivida.id,
         cartao: cartao,
         cartaoId: cartaoId,
-        valor_pago: savedDivida.valor_total,
+        valor_pago: savedDivida.total_com_juros || savedDivida.valor_total, // Valor total ou com juros se não parcelado
         data_emissao: new Date(data_lancamento),
         status: StatusContaPagar.ABERTO,
       });
@@ -109,8 +137,8 @@ export class DividasService {
    */
   async findAllByUserId(usuarioId: number): Promise<Dividas[]> {
     return this.dividasRepository.find({
-      where: { usuario: { id: usuarioId } }, // Filtra por usuário
-      relations: ['usuario', 'cartao'], // Carrega dados do usuário e do cartão associado
+      where: { usuario: { id: usuarioId } },
+      relations: ['usuario', 'cartao'],
     });
   }
 
@@ -123,7 +151,7 @@ export class DividasService {
    */
   async findOne(id: number, usuarioId: number): Promise<Dividas> {
     const divida = await this.dividasRepository.findOne({
-      where: { id: id, usuario: { id: usuarioId } }, // Filtra por ID da dívida E ID do usuário
+      where: { id: id, usuario: { id: usuarioId } },
       relations: ['usuario', 'cartao'],
     });
 
@@ -141,7 +169,6 @@ export class DividasService {
    * @returns A dívida atualizada.
    */
   async update(id: number, updateDividaDto: UpdateDividasDto, usuarioId: number): Promise<Dividas> {
-    // Reutiliza findOne para validar se a dívida existe e pertence ao usuário
     const divida = await this.findOne(id, usuarioId);
 
     // Se o cartaoId for alterado, verificar se o novo cartão pertence ao usuário
@@ -160,17 +187,40 @@ export class DividasService {
     this.dividasRepository.merge(divida, updateDividaDto);
 
     // Recalcular informações de parcela se campos relevantes forem atualizados
-    if (updateDividaDto.parcelado !== undefined || updateDividaDto.valor_total !== undefined || updateDividaDto.qtd_parcelas !== undefined || updateDividaDto.data_lancamento !== undefined) {
-      if (divida.parcelado) {
-        divida.valor_parcela = divida.valor_total / divida.qtd_parcelas!;
-        divida.data_fim_parcela = addMonths(divida.data_lancamento, divida.qtd_parcelas!);
+    const dataLancamento = updateDividaDto.data_lancamento ? new Date(updateDividaDto.data_lancamento) : divida.data_lancamento;
+
+    if (divida.parcelado) {
+      if (divida.qtd_parcelas && divida.qtd_parcelas > 0) {
+        // Recalcular juros_aplicado e total_com_juros
+        if (divida.juros_aplicado !== undefined && divida.juros_aplicado !== null) {
+          divida.total_com_juros = divida.valor_total + divida.juros_aplicado;
+        } else if (divida.total_com_juros !== undefined && divida.total_com_juros !== null) {
+          divida.juros_aplicado = divida.total_com_juros - divida.valor_total;
+        } else {
+          divida.juros_aplicado = 0;
+          divida.total_com_juros = divida.valor_total;
+        }
+        divida.valor_parcela = divida.total_com_juros / divida.qtd_parcelas;
+        divida.data_fim_parcela = addMonths(dataLancamento, divida.qtd_parcelas);
       } else {
-        divida.qtd_parcelas = undefined;
-        divida.valor_parcela = undefined;
-        divida.total_com_juros = undefined;
-        divida.data_fim_parcela = undefined;
+        throw new BadRequestException('Quantidade de parcelas é obrigatória e deve ser maior que zero para dívidas parceladas.');
+      }
+    } else {
+      divida.qtd_parcelas = undefined;
+      divida.valor_parcela = undefined;
+      divida.data_fim_parcela = undefined;
+      if (divida.juros_aplicado !== undefined && divida.juros_aplicado !== null) {
+        divida.total_com_juros = divida.valor_total + divida.juros_aplicado;
+      } else if (divida.total_com_juros !== undefined && divida.total_com_juros !== null) {
+        divida.juros_aplicado = divida.total_com_juros - divida.valor_total;
+      } else {
+        divida.juros_aplicado = 0;
+        divida.total_com_juros = divida.valor_total;
       }
     }
+
+    // TODO: Lógica para atualizar/regerar ContasAPagar se o parcelamento mudar ou se qtd_parcelas/valor_total mudar significativamente.
+    // Isso é complexo e pode exigir a exclusão e recriação das contas a pagar existentes ou um ajuste fino.
 
     return this.dividasRepository.save(divida);
   }
@@ -182,9 +232,32 @@ export class DividasService {
    * @throws NotFoundException Se a dívida não for encontrada ou não pertencer ao usuário.
    */
   async remove(id: number, usuarioId: number): Promise<void> {
-    // Reutiliza findOne para validar se a dívida existe e pertence ao usuário
     const divida = await this.findOne(id, usuarioId);
 
+    // TODO: Lógica para remover ContasAPagar associadas se o onDelete não for suficiente ou se precisar de lógica extra.
     await this.dividasRepository.remove(divida);
+  }
+
+  /**
+   * Calcula a quantidade de parcelas restantes para uma dívida.
+   * Este é um método de exemplo para demonstrar como 'qant_parcelas_restantes'
+   * deve ser um campo calculado, e não armazenado diretamente na entidade Divida.
+   * @param dividaId O ID da dívida.
+   * @returns O número de parcelas restantes.
+   */
+  async getRemainingInstallments(dividaId: number): Promise<number> {
+    const totalPaid = await this.accountsPayableRepository.count({
+      where: {
+        divida: { id: dividaId },
+        status: StatusContaPagar.PAGO,
+      },
+    });
+
+    const divida = await this.dividasRepository.findOne({ where: { id: dividaId } });
+    if (!divida || !divida.parcelado || !divida.qtd_parcelas) {
+      return 0; // Não é parcelado ou dados inválidos
+    }
+
+    return divida.qtd_parcelas - totalPaid;
   }
 }

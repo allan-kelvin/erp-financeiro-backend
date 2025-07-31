@@ -2,6 +2,7 @@ import { Cartao } from "src/cartoes/entities/cartoes.entity";
 import { ContasAPagar } from "src/contas-a-pagar/entities/contas-a-pagar.entity";
 import { User } from "src/users/entities/user.entity";
 import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { TipoDividaEnum } from "../enums/TipoDividaEnum";
 
 
 @Entity('dividas')
@@ -11,46 +12,49 @@ export class Dividas {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column()
+    @Column({ length: 255 })
     descricao: string;
+
+    @Column({ type: 'enum', enum: TipoDividaEnum })
+    tipo_divida: TipoDividaEnum;
 
     @Column({ type: 'decimal', precision: 10, scale: 2 })
     valor_total: number;
 
-    @Column({ type: 'boolean' })
+    @Column({ type: 'boolean', default: false })
     parcelado: boolean;
 
-    @Column({ type: 'int', nullable: true }) // Tipo explícito para MySQL INT
-    qtd_parcelas?: number; // Propriedade opcional no TypeScript
+    @Column({ type: 'int', nullable: true })
+    qtd_parcelas?: number;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true }) // Tipo explícito para MySQL DECIMAL
-    valor_parcela?: number; // Propriedade opcional no TypeScript
+    @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+    valor_parcela?: number;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true }) // Tipo explícito para MySQL DECIMAL
-    total_com_juros?: number; // Propriedade opcional no TypeScript
+    @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+    total_com_juros?: number;
 
-    @Column({ type: 'date' }) // Tipo explícito para MySQL DATE
+    @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+    juros_aplicado?: number;
+
+    @Column({ type: 'date' })
     data_lancamento: Date;
 
-    @Column({ type: 'date', nullable: true }) // Tipo explícito para MySQL DATE, e opcional
-    data_fim_parcela?: Date; // Propriedade marcada como opcional
+    @Column({ type: 'date', nullable: true })
+    data_fim_parcela?: Date;
 
-    // Relação Many-to-One com Cartão (uma dívida pertence a um cartão)
     @ManyToOne(() => Cartao, cartao => cartao.dividas, { onDelete: 'CASCADE' })
     cartao: Cartao;
 
-    @Column() // Coluna para armazenar a chave estrangeira do cartão
+    @Column()
     cartaoId: number;
 
-    // Relação Many-to-One com Usuário (uma dívida pertence a um usuário)
     @ManyToOne(() => User, user => user.dividas, { onDelete: 'CASCADE' })
     usuario: User;
 
-    @Column() // Coluna para armazenar a chave estrangeira do usuário
+    @Column()
     usuarioId: number;
 
-    // Relação One-to-Many com Contas a Pagar (uma dívida pode ter várias contas a pagar/parcelas)
-    @OneToMany(() => ContasAPagar, contasPagar => contasPagar.divida)
+    @OneToMany(() => ContasAPagar, accountPayable => accountPayable.divida)
     contasAPagar: ContasAPagar[];
 
     @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })

@@ -2,12 +2,12 @@ import { Cartao } from "src/cartoes/entities/cartoes.entity";
 import { ContasAPagar } from "src/contas-a-pagar/entities/contas-a-pagar.entity";
 import { User } from "src/users/entities/user.entity";
 import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
-import { TipoDividaEnum } from "../enums/TipoDividaEnum";
+import { TipoDespesaEnum } from "../enums/TipoDespesasEnum";
 
 
-@Entity('dividas')
+@Entity('despesas')
 
-export class Dividas {
+export class Despesas {
 
     @PrimaryGeneratedColumn()
     id: number;
@@ -15,8 +15,8 @@ export class Dividas {
     @Column({ length: 255 })
     descricao: string;
 
-    @Column({ type: 'enum', enum: TipoDividaEnum })
-    tipo_divida: TipoDividaEnum;
+    @Column({ type: 'enum', enum: TipoDespesaEnum })
+    tipo_despesa: TipoDespesaEnum;
 
     @Column({ type: 'decimal', precision: 10, scale: 2 })
     valor_total: number;
@@ -42,19 +42,19 @@ export class Dividas {
     @Column({ type: 'date', nullable: true })
     data_fim_parcela?: Date;
 
-    @ManyToOne(() => Cartao, cartao => cartao.dividas, { onDelete: 'CASCADE' })
+    @ManyToOne(() => Cartao, cartao => cartao.despesas, { onDelete: 'CASCADE' })
     cartao: Cartao;
 
     @Column()
     cartaoId: number;
 
-    @ManyToOne(() => User, user => user.dividas, { onDelete: 'CASCADE' })
+    @ManyToOne(() => User, user => user.despesas, { onDelete: 'CASCADE' })
     usuario: User;
 
     @Column()
     usuarioId: number;
 
-    @OneToMany(() => ContasAPagar, accountPayable => accountPayable.divida)
+    @OneToMany(() => ContasAPagar, accountPayable => accountPayable.despesas)
     contasAPagar: ContasAPagar[];
 
     @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })

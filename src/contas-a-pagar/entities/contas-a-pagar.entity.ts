@@ -1,4 +1,4 @@
-import { Dividas } from 'src/dividas/entities/divida.entity';
+import { Despesas } from 'src/despesas/entities/despesas.entity';
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { StatusContaPagar } from '../enums/StatusContaPagar.enum';
 import { Cartao } from './../../cartoes/entities/cartoes.entity';
@@ -9,11 +9,11 @@ export class ContasAPagar {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @ManyToOne(() => Dividas, divida => divida.contasAPagar, { onDelete: 'CASCADE' })
-    divida: Dividas;
+    @ManyToOne(() => Despesas, despesas => despesas.contasAPagar, { onDelete: 'CASCADE' })
+    despesas: Despesas;
 
     @Column()
-    dividaId: number;
+    despesasId: number;
 
     @ManyToOne(() => Cartao, cartao => cartao.contasAPagar, { onDelete: 'CASCADE' })
     cartao: Cartao;

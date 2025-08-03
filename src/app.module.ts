@@ -8,8 +8,8 @@ import { CartoesModule } from './cartoes/cartoes.module';
 import { Cartao } from './cartoes/entities/cartoes.entity';
 import { ContasAPagarModule } from './contas-a-pagar/contas-a-pagar.module';
 import { ContasAPagar } from './contas-a-pagar/entities/contas-a-pagar.entity';
-import { DividasModule } from './dividas/dividas.module';
-import { Dividas } from './dividas/entities/divida.entity';
+import { DespesasModule } from './despesas/despesas.module';
+import { Despesas } from './despesas/entities/despesas.entity';
 import { User } from './users/entities/user.entity';
 import { UsersModule } from './users/users.module';
 
@@ -23,12 +23,12 @@ import { UsersModule } from './users/users.module';
       username: 'root',
       password: '',
       database: 'a7financeiro',
-      entities: [User, Cartao, Dividas, ContasAPagar],
+      entities: [User, Cartao, Despesas, ContasAPagar],
       synchronize: true,
     }),
     UsersModule,
     CartoesModule,
-    DividasModule,
+    DespesasModule,
     ContasAPagarModule,
     AuthModule,
   ],

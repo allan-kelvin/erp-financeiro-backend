@@ -4,7 +4,7 @@ import { StatusContaPagar } from "src/contas-a-pagar/enums/StatusContaPagar.enum
 export class CreateContasAPagarDto {
 
     @IsNumber()
-    dividaId: number;
+    despesasId: number;
 
     @IsNumber()
     cartaoId: number;

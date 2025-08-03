@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { ContasAPagar } from 'src/contas-a-pagar/entities/contas-a-pagar.entity';
-import { Dividas } from 'src/dividas/entities/divida.entity';
+import { Despesas } from 'src/despesas/entities/despesas.entity';
 import { User } from 'src/users/entities/user.entity';
 import { CartoesController } from './cartoes.controller';
 import { CartoesService } from './cartoes.service';
@@ -12,7 +12,7 @@ import { Cartao } from './entities/cartoes.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Cartao, User, Dividas, ContasAPagar]),
+    TypeOrmModule.forFeature([Cartao, User, Despesas, ContasAPagar]),
     MulterModule.register({
       storage: diskStorage({
         destination: './uploads/images/cartoes', // Diretório onde as imagens serão salvas

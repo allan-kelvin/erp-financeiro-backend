@@ -1,5 +1,5 @@
 import { Cartao } from 'src/cartoes/entities/cartoes.entity';
-import { Dividas } from 'src/dividas/entities/divida.entity';
+import { Despesas } from 'src/despesas/entities/despesas.entity';
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('usuarios')
@@ -14,13 +14,13 @@ export class User {
     email: string;
 
     @Column()
-    senha: string; // Lembre-se de hashar senhas!
+    senha: string;
 
     @OneToMany(() => Cartao, cartao => cartao.usuario)
     cartoes: Cartao[];
 
-    @OneToMany(() => Dividas, divida => divida.usuario)
-    dividas: Dividas[];
+    @OneToMany(() => Despesas, despesas => despesas.usuario)
+    despesas: Despesas[];
 
     @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
     created_at: Date;

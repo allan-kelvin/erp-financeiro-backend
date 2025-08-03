@@ -1,16 +1,16 @@
 import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateIf } from '@nestjs/class-validator';
 import { Type } from 'class-transformer';
-import { TipoDividaEnum } from 'src/dividas/enums/TipoDividaEnum';
+import { TipoDespesaEnum } from 'src/despesas/enums/TipoDespesasEnum';
 
-export class CreateDividasDto {
+export class CreateDespesasDto {
 
     @IsString()
     @IsNotEmpty()
     descricao: string;
 
-    @IsEnum(TipoDividaEnum, { message: 'Tipo de dívida inválido.' }) // Novo campo com validação de enum
+    @IsEnum(TipoDespesaEnum, { message: 'Tipo de despesa inválido.' }) // Novo campo com validação de enum
     @IsNotEmpty()
-    tipo_divida: TipoDividaEnum;
+    tipo_despesa: TipoDespesaEnum;
 
     @IsNumber()
     @IsNotEmpty()
@@ -25,7 +25,7 @@ export class CreateDividasDto {
     @ValidateIf(o => o.parcelado === true)
     @IsNumber()
     @IsNotEmpty()
-    @Min(1, { message: 'A quantidade de parcelas deve ser no mínimo 1 para dívidas parceladas.' })
+    @Min(1, { message: 'A quantidade de parcelas deve ser no mínimo 1 para despesas parceladas.' })
     @Type(() => Number)
     qtd_parcelas?: number;
 
@@ -52,7 +52,7 @@ export class CreateDividasDto {
     data_lancamento: string;
 
     @IsNumber()
-    @IsNotEmpty()
+    @IsOptional()
     cartaoId: number;
 
     @IsNumber()

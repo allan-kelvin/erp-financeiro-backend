@@ -23,13 +23,13 @@ export class ContasAPagarController {
     findAll(
         @Req() req: Request & { user: User },
         @Query('status') status?: StatusContaPagar,
-        @Query('dividaId') dividaId?: number,
+        @Query('despesasId') despesasId?: number,
         @Query('cartaoId') cartaoId?: number,
     ) {
-        const parsedDividaId = dividaId ? parseInt(dividaId as any, 10) : undefined;
+        const parsedDespesasId = despesasId ? parseInt(despesasId as any, 10) : undefined;
         const parsedCartaoId = cartaoId ? parseInt(cartaoId as any, 10) : undefined;
         // Retorna apenas as contas a pagar do usuário logado, com filtros opcionais
-        return this.contasAPagarService.findAllByUserId(req.user.id, status, parsedDividaId, parsedCartaoId);
+        return this.contasAPagarService.findAllByUserId(req.user.id, status, parsedDespesasId, parsedCartaoId);
     }
 
     @Get(':id')

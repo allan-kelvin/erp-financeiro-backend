@@ -1,10 +1,10 @@
 import { ContasAPagar } from 'src/contas-a-pagar/entities/contas-a-pagar.entity';
+import { Despesas } from 'src/despesas/entities/despesas.entity';
 import { User } from 'src/users/entities/user.entity';
 import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { Bandeira } from '../enums/Bandeira.enum';
 import { StatusCartao } from '../enums/StatusCartao.enum';
 import { TipoCartao } from '../enums/TipoCartao.enum';
-import { Dividas } from './../../dividas/entities/divida.entity';
 
 @Entity('cartoes')
 export class Cartao {
@@ -32,8 +32,8 @@ export class Cartao {
     @Column()
     usuarioId: number;
 
-    @OneToMany(() => Dividas, divida => divida.cartao)
-    dividas: Dividas[];
+    @OneToMany(() => Despesas, despesas => despesas.cartao)
+    despesas: Despesas[];
 
     @OneToMany(() => ContasAPagar, accountPayable => accountPayable.cartao)
     contasAPagar: ContasAPagar[];

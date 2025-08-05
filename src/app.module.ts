@@ -4,6 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { BancoModule } from './banco/banco.module';
+import { Banco } from './banco/entities/banco.entity';
 import { CartoesModule } from './cartoes/cartoes.module';
 import { Cartao } from './cartoes/entities/cartoes.entity';
 import { ContasAPagarModule } from './contas-a-pagar/contas-a-pagar.module';
@@ -23,7 +25,7 @@ import { UsersModule } from './users/users.module';
       username: 'root',
       password: '',
       database: 'a7financeiro',
-      entities: [User, Cartao, Despesas, ContasAPagar],
+      entities: [User, Cartao, Despesas, ContasAPagar, Banco],
       synchronize: true,
     }),
     UsersModule,
@@ -31,6 +33,7 @@ import { UsersModule } from './users/users.module';
     DespesasModule,
     ContasAPagarModule,
     AuthModule,
+    BancoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

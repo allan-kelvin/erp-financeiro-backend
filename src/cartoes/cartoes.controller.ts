@@ -24,7 +24,7 @@ import { CreateCartoesDto } from './dto/create-cartoes.dto/create-cartoes.dto';
 import { UpdateCartoesDto } from './dto/update-cartoes.dto/update-cartoes.dto';
 
 @Controller('cartoes')
-@UsePipes(new ValidationPipe({ transform: true })) // Mantenha o pipe global para outros métodos
+@UsePipes(new ValidationPipe({ transform: true }))
 @UseGuards(JwtAuthGuard)
 export class CartoesController {
     constructor(private readonly cartoesService: CartoesService) { }

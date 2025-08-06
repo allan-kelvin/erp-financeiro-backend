@@ -12,6 +12,8 @@ import { ContasAPagarModule } from './contas-a-pagar/contas-a-pagar.module';
 import { ContasAPagar } from './contas-a-pagar/entities/contas-a-pagar.entity';
 import { DespesasModule } from './despesas/despesas.module';
 import { Despesas } from './despesas/entities/despesas.entity';
+import { SubCategoria } from './sub-categoria/entities/sub-categoria.entity';
+import { SubCategoriaModule } from './sub-categoria/sub-categoria.module';
 import { User } from './users/entities/user.entity';
 import { UsersModule } from './users/users.module';
 
@@ -25,7 +27,7 @@ import { UsersModule } from './users/users.module';
       username: 'root',
       password: '',
       database: 'a7financeiro',
-      entities: [User, Cartao, Despesas, ContasAPagar, Banco],
+      entities: [User, Cartao, Despesas, ContasAPagar, Banco, SubCategoria],
       synchronize: true,
     }),
     UsersModule,
@@ -34,6 +36,7 @@ import { UsersModule } from './users/users.module';
     ContasAPagarModule,
     AuthModule,
     BancoModule,
+    SubCategoriaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

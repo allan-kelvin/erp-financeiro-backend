@@ -1,16 +1,21 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { addMonths } from 'date-fns';
+import { Banco } from 'src/banco/entities/banco.entity';
 import { Cartao } from 'src/cartoes/entities/cartoes.entity';
 import { ContasAPagar } from 'src/contas-a-pagar/entities/contas-a-pagar.entity';
 import { StatusContaPagar } from 'src/contas-a-pagar/enums/StatusContaPagar.enum';
+import { Fornecedor } from 'src/fornecedor/entities/fornecedor.entity';
+import { SubCategoria } from 'src/sub-categoria/entities/sub-categoria.entity';
 import { User } from 'src/users/entities/user.entity';
 import { Repository } from 'typeorm';
 import { CreateDespesasDto } from './dto/create-despesas.dto/create-despesas.dto';
 import { UpdateDespesasDto } from './dto/update-despesas.dto/update-despesas.dto';
 import { Despesas } from './entities/despesas.entity';
-
-
 
 @Injectable()
 export class DespesasService {
@@ -23,93 +28,138 @@ export class DespesasService {
     private usersRepository: Repository<User>,
     @InjectRepository(Cartao)
     private cartoesRepository: Repository<Cartao>,
+    @InjectRepository(SubCategoria)
+    private subCategoriaRepository: Repository<SubCategoria>,
+    @InjectRepository(Fornecedor)
+    private fornecedorRepository: Repository<Fornecedor>,
+    @InjectRepository(Banco)
+    private bancoRepository: Repository<Banco>,
   ) { }
 
-  /**
-   * Cria uma nova despesas para um usuário específico, gerando contas a pagar se parcelado.
-   * @param createDespesasDto Os dados para criação da despesas.
-   * @param usuarioId O ID do usuário autenticado.
-   * @returns A despesas criada.
-   */
-  async create(createDespesasDto: CreateDespesasDto, usuarioId: number): Promise<Despesas> {
-    const { parcelado, valor_total, qtd_parcelas, data_lancamento, cartaoId, juros_aplicado, total_com_juros, ...rest } = createDespesasDto;
+  async create(
+    createDespesasDto: CreateDespesasDto,
+    usuarioId: number,
+  ): Promise<Despesas> {
+    const {
+      parcelado,
+      valor,
+      qtd_parcelas,
+      data_lancamento,
+      cartaoId,
+      juros_aplicado,
+      total_com_juros,
+      subCategoriaId,
+      fornecedorId,
+      bancoId,
+      ...rest
+    } = createDespesasDto;
 
-    // 1. Verificar se o usuário existe
-    const usuario = await this.usersRepository.findOne({ where: { id: usuarioId } });
-    if (!usuario) {
-      throw new NotFoundException(`Usuário com ID ${usuarioId} não encontrado.`);
-    }
-
-    // 2. Verificar se o cartão existe e pertence ao usuário
-    const cartao = await this.cartoesRepository.findOne({
-      where: { id: cartaoId, usuario: { id: usuarioId } },
+    const usuario = await this.usersRepository.findOne({
+      where: { id: usuarioId },
     });
-    if (!cartao) {
-      throw new NotFoundException(`Cartão com ID ${cartaoId} não encontrado ou não pertence ao usuário.`);
+    if (!usuario) {
+      throw new NotFoundException(
+        `Usuário com ID ${usuarioId} não encontrado.`,
+      );
     }
 
-    const Despesas = this.DespesasRepository.create({
+    const subCategoria = await this.subCategoriaRepository.findOne({
+      where: { id: subCategoriaId },
+    });
+    if (!subCategoria) {
+      throw new NotFoundException(
+        `Sub-categoria com ID ${subCategoriaId} não encontrada.`,
+      );
+    }
+
+    const despesas = this.DespesasRepository.create({
       ...rest,
-      valor_total,
+      valor,
       parcelado,
       data_lancamento: new Date(data_lancamento),
-      cartao: cartao,
-      cartaoId: cartaoId,
-      usuario: usuario,
-      usuarioId: usuarioId,
+      usuario,
+      usuarioId,
+      subCategoria,
+      subCategoriaId,
     });
 
-    // Lógica para juros e parcelamento
-    if (parcelado) {
-      if (!qtd_parcelas || qtd_parcelas <= 0) {
-        throw new BadRequestException('Quantidade de parcelas é obrigatória e deve ser maior que zero para despesass parceladas.');
+    // Verificações para campos opcionais
+    if (cartaoId) {
+      const cartao = await this.cartoesRepository.findOne({
+        where: { id: cartaoId, usuario: { id: usuarioId } },
+      });
+      if (!cartao) {
+        throw new NotFoundException(
+          `Cartão com ID ${cartaoId} não encontrado ou não pertence ao usuário.`,
+        );
       }
-      Despesas.qtd_parcelas = qtd_parcelas;
-
-      // Calcular juros_aplicado e total_com_juros
-      if (juros_aplicado !== undefined && juros_aplicado !== null) {
-        Despesas.juros_aplicado = juros_aplicado;
-        Despesas.total_com_juros = valor_total + juros_aplicado;
-      } else if (total_com_juros !== undefined && total_com_juros !== null) {
-        Despesas.total_com_juros = total_com_juros;
-        Despesas.juros_aplicado = total_com_juros - valor_total;
-      } else {
-        // Se nenhum juros ou total_com_juros for fornecido, assumir 0 juros
-        Despesas.juros_aplicado = 0;
-        Despesas.total_com_juros = valor_total;
-      }
-
-      Despesas.valor_parcela = Despesas.total_com_juros / qtd_parcelas;
-      Despesas.data_fim_parcela = addMonths(new Date(data_lancamento), qtd_parcelas);
-    } else {
-      Despesas.qtd_parcelas = undefined;
-      Despesas.valor_parcela = undefined;
-      Despesas.data_fim_parcela = undefined;
-
-      if (juros_aplicado !== undefined && juros_aplicado !== null) {
-        Despesas.juros_aplicado = juros_aplicado;
-        Despesas.total_com_juros = valor_total + juros_aplicado;
-      } else if (total_com_juros !== undefined && total_com_juros !== null) {
-        Despesas.total_com_juros = total_com_juros;
-        Despesas.juros_aplicado = total_com_juros - valor_total;
-      } else {
-        Despesas.juros_aplicado = 0;
-        Despesas.total_com_juros = valor_total;
-      }
+      despesas.cartao = cartao;
+      despesas.cartaoId = cartaoId;
     }
 
-    const savedDespesas = await this.DespesasRepository.save(Despesas);
+    if (fornecedorId) {
+      const fornecedor = await this.fornecedorRepository.findOne({
+        where: { id: fornecedorId },
+      });
+      if (!fornecedor) {
+        throw new NotFoundException(
+          `Fornecedor com ID ${fornecedorId} não encontrado.`,
+        );
+      }
+      despesas.fornecedor = fornecedor;
+      despesas.fornecedorId = fornecedorId;
+    }
+
+    if (bancoId) {
+      const banco = await this.bancoRepository.findOne({
+        where: { id: bancoId },
+      });
+      if (!banco) {
+        throw new NotFoundException(`Banco com ID ${bancoId} não encontrado.`);
+      }
+      despesas.banco = banco;
+      despesas.bancoId = bancoId;
+    }
+
+    if (parcelado) {
+      if (!qtd_parcelas || qtd_parcelas <= 0) {
+        throw new BadRequestException(
+          'Quantidade de parcelas é obrigatória e deve ser maior que zero para despesas parceladas.',
+        );
+      }
+      despesas.qtd_parcelas = qtd_parcelas;
+      despesas.total_com_juros = total_com_juros || valor;
+      despesas.juros_aplicado = juros_aplicado || 0;
+      if (despesas.total_com_juros > 0) {
+        despesas.valor_parcela = despesas.total_com_juros / qtd_parcelas;
+      } else {
+        despesas.valor_parcela = 0;
+      }
+      despesas.data_fim_parcela = addMonths(
+        new Date(data_lancamento),
+        qtd_parcelas,
+      );
+    } else {
+      despesas.qtd_parcelas = undefined;
+      despesas.valor_parcela = undefined;
+      despesas.data_fim_parcela = undefined;
+      despesas.juros_aplicado = juros_aplicado || 0;
+      despesas.total_com_juros = total_com_juros || valor;
+    }
+
+    const savedDespesas = await this.DespesasRepository.save(despesas);
 
     // Gerar contas a pagar
+    const valueToPay = savedDespesas.total_com_juros ?? savedDespesas.valor;
     if (savedDespesas.parcelado) {
       for (let i = 0; i < savedDespesas.qtd_parcelas!; i++) {
         const dueDate = addMonths(new Date(data_lancamento), i);
         const accountPayable = this.accountsPayableRepository.create({
           despesas: savedDespesas,
           despesasId: savedDespesas.id,
-          cartao: cartao,
-          cartaoId: cartaoId,
-          valor_pago: savedDespesas.valor_parcela!, // Valor da parcela
+          cartao: savedDespesas.cartao,
+          cartaoId: savedDespesas.cartaoId,
+          valor_pago: savedDespesas.valor_parcela!,
           data_emissao: dueDate,
           status: StatusContaPagar.ABERTO,
         });
@@ -119,9 +169,9 @@ export class DespesasService {
       const accountPayable = this.accountsPayableRepository.create({
         despesas: savedDespesas,
         despesasId: savedDespesas.id,
-        cartao: cartao,
-        cartaoId: cartaoId,
-        valor_pago: savedDespesas.total_com_juros || savedDespesas.valor_total, // Valor total ou com juros se não parcelado
+        cartao: savedDespesas.cartao,
+        cartaoId: savedDespesas.cartaoId,
+        valor_pago: valueToPay,
         data_emissao: new Date(data_lancamento),
         status: StatusContaPagar.ABERTO,
       });
@@ -131,134 +181,136 @@ export class DespesasService {
     return savedDespesas;
   }
 
-  /**
-   * Retorna todas as despesass pertencentes a um usuário específico.
-   * @param usuarioId O ID do usuário autenticado.
-   * @returns Uma lista de despesass do usuário.
-   */
   async findAllByUserId(usuarioId: number): Promise<Despesas[]> {
     return this.DespesasRepository.find({
       where: { usuario: { id: usuarioId } },
-      relations: ['usuario', 'cartao'],
+      relations: ['usuario', 'cartao', 'subCategoria', 'fornecedor', 'banco'],
     });
   }
 
-  /**
-   * Retorna uma despesas específica pelo ID, garantindo que ela pertença ao usuário.
-   * @param id O ID da despesas.
-   * @param usuarioId O ID do usuário autenticado.
-   * @returns A despesas encontrada.
-   * @throws NotFoundException Se a despesas não for encontrada ou não pertencer ao usuário.
-   */
   async findOne(id: number, usuarioId: number): Promise<Despesas> {
-    const Despesas = await this.DespesasRepository.findOne({
+    const despesas = await this.DespesasRepository.findOne({
       where: { id: id, usuario: { id: usuarioId } },
-      relations: ['usuario', 'cartao'],
+      relations: ['usuario', 'cartao', 'subCategoria', 'fornecedor', 'banco'],
     });
 
-    if (!Despesas) {
-      throw new NotFoundException(`despesas com ID ${id} não encontrada ou não pertence ao usuário.`);
+    if (!despesas) {
+      throw new NotFoundException(
+        `Despesa com ID ${id} não encontrada ou não pertence ao usuário.`,
+      );
     }
-    return Despesas;
+    return despesas;
   }
 
-  /**
-   * Atualiza uma despesas específica, garantindo que ela pertença ao usuário.
-   * @param id O ID da despesas a ser atualizada.
-   * @param updateDespesasDto Os dados para atualização.
-   * @param usuarioId O ID do usuário autenticado.
-   * @returns A despesas atualizada.
-   */
-  async update(id: number, updateDespesasDto: UpdateDespesasDto, usuarioId: number): Promise<Despesas> {
-    const Despesas = await this.findOne(id, usuarioId);
+  async update(
+    id: number,
+    updateDespesasDto: UpdateDespesasDto,
+    usuarioId: number,
+  ): Promise<Despesas> {
+    const despesa = await this.findOne(id, usuarioId);
 
-    // Se o cartaoId for alterado, verificar se o novo cartão pertence ao usuário
-    if (updateDespesasDto.cartaoId && updateDespesasDto.cartaoId !== Despesas.cartaoId) {
+    // Atualiza o objeto da despesa com os novos dados
+    this.DespesasRepository.merge(despesa, updateDespesasDto);
+
+    // Validação de relações
+    if (
+      updateDespesasDto.cartaoId !== undefined &&
+      updateDespesasDto.cartaoId !== despesa.cartaoId
+    ) {
       const newCartao = await this.cartoesRepository.findOne({
         where: { id: updateDespesasDto.cartaoId, usuario: { id: usuarioId } },
       });
       if (!newCartao) {
-        throw new NotFoundException(`Novo cartão com ID ${updateDespesasDto.cartaoId} não encontrado ou não pertence ao usuário.`);
+        throw new NotFoundException(
+          `Novo cartão com ID ${updateDespesasDto.cartaoId} não encontrado ou não pertence ao usuário.`,
+        );
       }
-      Despesas.cartao = newCartao;
-      Despesas.cartaoId = newCartao.id;
+      despesa.cartao = newCartao;
+    }
+    if (
+      updateDespesasDto.subCategoriaId !== undefined &&
+      updateDespesasDto.subCategoriaId !== despesa.subCategoriaId
+    ) {
+      const newSubCategoria = await this.subCategoriaRepository.findOne({
+        where: { id: updateDespesasDto.subCategoriaId },
+      });
+      if (!newSubCategoria) {
+        throw new NotFoundException(
+          `Nova sub-categoria com ID ${updateDespesasDto.subCategoriaId} não encontrada.`,
+        );
+      }
+      despesa.subCategoria = newSubCategoria;
+    }
+    if (
+      updateDespesasDto.fornecedorId !== undefined &&
+      updateDespesasDto.fornecedorId !== despesa.fornecedorId
+    ) {
+      const newFornecedor = await this.fornecedorRepository.findOne({
+        where: { id: updateDespesasDto.fornecedorId },
+      });
+      if (!newFornecedor) {
+        throw new NotFoundException(
+          `Novo fornecedor com ID ${updateDespesasDto.fornecedorId} não encontrado.`,
+        );
+      }
+      despesa.fornecedor = newFornecedor;
+    }
+    if (
+      updateDespesasDto.bancoId !== undefined &&
+      updateDespesasDto.bancoId !== despesa.bancoId
+    ) {
+      const newBanco = await this.bancoRepository.findOne({
+        where: { id: updateDespesasDto.bancoId },
+      });
+      if (!newBanco) {
+        throw new NotFoundException(
+          `Novo banco com ID ${updateDespesasDto.bancoId} não encontrado.`,
+        );
+      }
+      despesa.banco = newBanco;
     }
 
-    // Aplica as atualizações no objeto da despesas
-    this.DespesasRepository.merge(Despesas, updateDespesasDto);
-
-    // Recalcular informações de parcela se campos relevantes forem atualizados
-    const dataLancamento = updateDespesasDto.data_lancamento ? new Date(updateDespesasDto.data_lancamento) : Despesas.data_lancamento;
-
-    if (Despesas.parcelado) {
-      if (Despesas.qtd_parcelas && Despesas.qtd_parcelas > 0) {
-        // Recalcular juros_aplicado e total_com_juros
-        if (Despesas.juros_aplicado !== undefined && Despesas.juros_aplicado !== null) {
-          Despesas.total_com_juros = Despesas.valor_total + Despesas.juros_aplicado;
-        } else if (Despesas.total_com_juros !== undefined && Despesas.total_com_juros !== null) {
-          Despesas.juros_aplicado = Despesas.total_com_juros - Despesas.valor_total;
+    // Recalcular informações de parcelamento se o status ou valores mudarem
+    if (despesa.parcelado) {
+      if (despesa.qtd_parcelas && despesa.qtd_parcelas > 0) {
+        despesa.total_com_juros = despesa.total_com_juros || despesa.valor;
+        despesa.juros_aplicado = despesa.juros_aplicado || 0;
+        if (despesa.total_com_juros > 0) {
+          despesa.valor_parcela =
+            despesa.total_com_juros / despesa.qtd_parcelas;
         } else {
-          Despesas.juros_aplicado = 0;
-          Despesas.total_com_juros = Despesas.valor_total;
+          despesa.valor_parcela = 0;
         }
-        Despesas.valor_parcela = Despesas.total_com_juros / Despesas.qtd_parcelas;
-        Despesas.data_fim_parcela = addMonths(dataLancamento, Despesas.qtd_parcelas);
+        const dataLancamento = updateDespesasDto.data_lancamento
+          ? new Date(updateDespesasDto.data_lancamento)
+          : despesa.data_lancamento;
+        despesa.data_fim_parcela = addMonths(
+          dataLancamento,
+          despesa.qtd_parcelas,
+        );
       } else {
-        throw new BadRequestException('Quantidade de parcelas é obrigatória e deve ser maior que zero para despesass parceladas.');
+        throw new BadRequestException(
+          'Quantidade de parcelas é obrigatória e deve ser maior que zero para despesas parceladas.',
+        );
       }
     } else {
-      Despesas.qtd_parcelas = undefined;
-      Despesas.valor_parcela = undefined;
-      Despesas.data_fim_parcela = undefined;
-      if (Despesas.juros_aplicado !== undefined && Despesas.juros_aplicado !== null) {
-        Despesas.total_com_juros = Despesas.valor_total + Despesas.juros_aplicado;
-      } else if (Despesas.total_com_juros !== undefined && Despesas.total_com_juros !== null) {
-        Despesas.juros_aplicado = Despesas.total_com_juros - Despesas.valor_total;
-      } else {
-        Despesas.juros_aplicado = 0;
-        Despesas.total_com_juros = Despesas.valor_total;
-      }
+      despesa.qtd_parcelas = undefined;
+      despesa.valor_parcela = undefined;
+      despesa.data_fim_parcela = undefined;
+      despesa.juros_aplicado = despesa.juros_aplicado || 0;
+      despesa.total_com_juros = despesa.total_com_juros || despesa.valor;
     }
 
-    // TODO: Lógica para atualizar/regerar ContasAPagar se o parcelamento mudar ou se qtd_parcelas/valor_total mudar significativamente.
+    // TODO: Lógica para atualizar/regerar ContasAPagar se o parcelamento mudar.
     // Isso é complexo e pode exigir a exclusão e recriação das contas a pagar existentes ou um ajuste fino.
 
-    return this.DespesasRepository.save(Despesas);
+    return this.DespesasRepository.save(despesa);
   }
 
-  /**
-   * Remove uma despesas específica, garantindo que ela pertença ao usuário.
-   * @param id O ID da despesas a ser removida.
-   * @param usuarioId O ID do usuário autenticado.
-   * @throws NotFoundException Se a despesas não for encontrada ou não pertencer ao usuário.
-   */
   async remove(id: number, usuarioId: number): Promise<void> {
-    const Despesas = await this.findOne(id, usuarioId);
+    const despesa = await this.findOne(id, usuarioId);
 
     // TODO: Lógica para remover ContasAPagar associadas se o onDelete não for suficiente ou se precisar de lógica extra.
-    await this.DespesasRepository.remove(Despesas);
-  }
-
-  /**
-   * Calcula a quantidade de parcelas restantes para uma despesas.
-   * Este é um método de exemplo para demonstrar como 'qant_parcelas_restantes'
-   * deve ser um campo calculado, e não armazenado diretamente na entidade Despesas.
-   * @param DespesasId O ID da despesas.
-   * @returns O número de parcelas restantes.
-   */
-  async getRemainingInstallments(DespesasId: number): Promise<number> {
-    const totalPaid = await this.accountsPayableRepository.count({
-      where: {
-        despesas: { id: DespesasId },
-        status: StatusContaPagar.PAGO,
-      },
-    });
-
-    const Despesas = await this.DespesasRepository.findOne({ where: { id: DespesasId } });
-    if (!Despesas || !Despesas.parcelado || !Despesas.qtd_parcelas) {
-      return 0; // Não é parcelado ou dados inválidos
-    }
-
-    return Despesas.qtd_parcelas - totalPaid;
+    await this.DespesasRepository.remove(despesa);
   }
 }

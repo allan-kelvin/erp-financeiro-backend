@@ -1,6 +1,8 @@
 import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateIf } from '@nestjs/class-validator';
 import { Type } from 'class-transformer';
-import { TipoDespesaEnum } from 'src/despesas/enums/TipoDespesasEnum';
+import { CategoriaEnum } from 'src/despesas/enums/CategoriaEnum';
+import { FormaDePagamentoEnum } from 'src/despesas/enums/FormaPagamentoEnum';
+import { GrupoEnum } from 'src/despesas/enums/GrupoEnum';
 
 export class CreateDespesasDto {
 
@@ -8,15 +10,23 @@ export class CreateDespesasDto {
     @IsNotEmpty()
     descricao: string;
 
-    @IsEnum(TipoDespesaEnum, { message: 'Tipo de despesa inválido.' }) // Novo campo com validação de enum
+    @IsEnum(CategoriaEnum, { message: 'Categoria inválida.' })
     @IsNotEmpty()
-    tipo_despesa: TipoDespesaEnum;
+    categoria: CategoriaEnum;
+
+    @IsEnum(GrupoEnum, { message: 'Grupo inválido.' })
+    @IsNotEmpty()
+    grupo: GrupoEnum;
 
     @IsNumber()
     @IsNotEmpty()
-    @Min(0.01, { message: 'O valor total deve ser maior que zero.' })
+    @Min(0.01, { message: 'O valor deve ser maior que zero.' })
     @Type(() => Number)
-    valor_total: number;
+    valor: number;
+
+    @IsEnum(FormaDePagamentoEnum, { message: 'Forma de pagamento inválida.' })
+    @IsNotEmpty()
+    formaDePagamento: FormaDePagamentoEnum;
 
     @IsBoolean()
     @IsNotEmpty()
@@ -41,11 +51,11 @@ export class CreateDespesasDto {
     @Type(() => Number)
     total_com_juros?: number;
 
-    @IsOptional() // Campo opcional, pode ser calculado ou fornecido
+    @IsOptional()
     @IsNumber()
     @Min(0, { message: 'Os juros aplicados não podem ser negativos.' })
     @Type(() => Number)
-    juros_aplicado?: number; // Novo campo para juros aplicados
+    juros_aplicado?: number;
 
     @IsNotEmpty()
     @IsString({ message: 'A data de lançamento deve ser uma string de data válida.' })
@@ -54,6 +64,18 @@ export class CreateDespesasDto {
     @IsNumber()
     @IsOptional()
     cartaoId: number;
+
+    @IsNumber()
+    @IsNotEmpty()
+    subCategoriaId: number;
+
+    @IsNumber()
+    @IsOptional()
+    fornecedorId?: number;
+
+    @IsNumber()
+    @IsOptional()
+    bancoId?: number;
 
     @IsNumber()
     @IsNotEmpty()

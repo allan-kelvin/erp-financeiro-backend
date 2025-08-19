@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Despesas } from "src/despesas/entities/despesas.entity";
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { StatusBanco } from "../enums/StatusBanco.enum";
 import { TipoContaEnum } from "../enums/TipoConta.enum";
 
@@ -19,4 +20,7 @@ export class Banco {
 
     @Column({ type: 'enum', enum: StatusBanco, default: StatusBanco.ATIVO })
     status: string;
+
+    @OneToMany(() => Despesas, despesa => despesa.banco)
+    despesas: Despesas[];
 }

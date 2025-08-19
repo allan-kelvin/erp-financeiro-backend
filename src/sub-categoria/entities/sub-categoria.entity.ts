@@ -1,7 +1,9 @@
+import { Despesas } from 'src/despesas/entities/despesas.entity';
 import {
     Column,
     CreateDateColumn,
     Entity,
+    OneToMany,
     PrimaryGeneratedColumn,
     UpdateDateColumn,
 } from 'typeorm';
@@ -22,4 +24,7 @@ export class SubCategoria {
 
     @UpdateDateColumn({ name: 'updated_at' })
     updatedAt: Date;
+
+    @OneToMany(() => Despesas, despesa => despesa.subCategoria)
+    despesas: Despesas[];
 }

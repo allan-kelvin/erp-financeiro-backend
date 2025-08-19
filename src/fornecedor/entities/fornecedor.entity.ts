@@ -1,4 +1,5 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Despesas } from 'src/despesas/entities/despesas.entity';
+import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('fornecedores')
 export class Fornecedor {
@@ -31,4 +32,9 @@ export class Fornecedor {
 
     @Column({ name: 'email', type: 'varchar', length: 255, nullable: true })
     email: string;
+
+
+    @OneToMany(() => Despesas, despesa => despesa.fornecedor)
+    despesas: Despesas[];
+
 }

@@ -46,8 +46,8 @@ export class UsersController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard) // Mantenha a proteção
-  @HttpCode(HttpStatus.NO_CONTENT) // Retorna 204 No Content para exclusão bem-sucedida
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string, @Req() req) {
     const usuarioId = req.user.id;
     const result = await this.usersService.remove(+id, usuarioId);

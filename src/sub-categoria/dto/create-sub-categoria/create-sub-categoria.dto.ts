@@ -3,7 +3,7 @@ import { IsBoolean, IsNotEmpty, IsOptional, IsString } from "class-validator";
 export class CreateSubCategoriaDTO {
     @IsString()
     @IsNotEmpty()
-    description: string;
+    descricao: string;
 
     @IsBoolean()
     @IsOptional()

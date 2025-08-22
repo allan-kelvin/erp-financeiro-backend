@@ -15,32 +15,27 @@ export class DespesasController {
     @Post()
     @HttpCode(HttpStatus.CREATED)
     create(@Body() createDespesasDto: CreateDespesasDto, @Req() req: Request & { user: User }) {
-        // O ID do usuário logado estará disponível em req.user.id
         return this.despesasService.create(createDespesasDto, req.user.id);
     }
 
     @Get()
     findAll(@Req() req: Request & { user: User }) {
-        // Retorna apenas as Despesasvidas do usuário logado
         return this.despesasService.findAllByUserId(req.user.id);
     }
 
     @Get(':id')
     findOne(@Param('id') id: string, @Req() req: Request & { user: User }) {
-        // Retorna uma Despesasvida específica, mas apenas se pertencer ao usuário logado
         return this.despesasService.findOne(+id, req.user.id);
     }
 
     @Patch(':id')
     update(@Param('id') id: string, @Body() updateDespesasDto: UpdateDespesasDto, @Req() req: Request & { user: User }) {
-        // Atualiza uma Despesasvida específica, mas apenas se pertencer ao usuário logado
         return this.despesasService.update(+id, updateDespesasDto, req.user.id);
     }
 
     @Delete(':id')
     @HttpCode(HttpStatus.NO_CONTENT)
     remove(@Param('id') id: string, @Req() req: Request & { user: User }) {
-        // Remove uma Despesasvida específica, mas apenas se pertencer ao usuário logado
         return this.despesasService.remove(+id, req.user.id);
     }
 }

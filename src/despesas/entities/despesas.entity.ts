@@ -6,7 +6,7 @@ import { SubCategoria } from "src/sub-categoria/entities/sub-categoria.entity";
 import { User } from "src/users/entities/user.entity";
 import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { CategoriaEnum } from "../enums/CategoriaEnum";
-import { FormaDePagamentoEnum } from "../enums/FormaPagamentoEnum";
+import { FormaDePagamentoEnum } from "../enums/FormaDePagamentoEnum";
 import { GrupoEnum } from "../enums/GrupoEnum";
 
 

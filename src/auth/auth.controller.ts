@@ -15,10 +15,9 @@ export class AuthController {
         return this.authService.login(loginUserDto);
     }
 
-    @Post('register') // Nova rota para registro de usuários
+    @Post('register')
     @HttpCode(HttpStatus.CREATED)
     async register(@Body() createUserDto: CreateUserDto) {
-        // A lógica de registro será delegada ao AuthService, que por sua vez usará o UsersService
         return this.authService.register(createUserDto);
     }
 }

@@ -14,7 +14,7 @@ export class SubCategoria {
     id: number;
 
     @Column({ type: 'varchar', length: 255 })
-    description: string;
+    descricao: string;
 
     @Column({ default: true })
     status: boolean;

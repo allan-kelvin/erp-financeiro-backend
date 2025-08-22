@@ -1,7 +1,7 @@
-import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateIf } from '@nestjs/class-validator';
+import { IsBoolean, IsDate, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateIf } from '@nestjs/class-validator';
 import { Type } from 'class-transformer';
 import { CategoriaEnum } from 'src/despesas/enums/CategoriaEnum';
-import { FormaDePagamentoEnum } from 'src/despesas/enums/FormaPagamentoEnum';
+import { FormaDePagamentoEnum } from 'src/despesas/enums/FormaDePagamentoEnum';
 import { GrupoEnum } from 'src/despesas/enums/GrupoEnum';
 
 export class CreateDespesasDto {
@@ -57,8 +57,8 @@ export class CreateDespesasDto {
     @Type(() => Number)
     juros_aplicado?: number;
 
-    @IsNotEmpty()
-    @IsString({ message: 'A data de lançamento deve ser uma string de data válida.' })
+    @IsDate()
+    @Type(() => Date)
     data_lancamento: string;
 
     @IsNumber()

@@ -1,4 +1,4 @@
 export enum TipoCartao {
-    DEBITO = 'debito',
-    CREDITO = 'credito',
+    DEBITO = 'Débito',
+    CREDITO = 'Crédito',
 }

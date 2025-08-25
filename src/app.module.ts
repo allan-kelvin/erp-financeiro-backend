@@ -28,7 +28,7 @@ import { UsersModule } from './users/users.module';
       port: 3306,
       username: 'root',
       password: '',
-      database: 'a7financeironew',
+      database: 'a7financeiro',
       entities: [User, Cartao, Despesas, ContasAPagar, Banco, SubCategoria, Fornecedor],
       synchronize: true,
     }),
